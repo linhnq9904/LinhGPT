@@ -26,8 +26,7 @@ function App() {
       const aiMessage: Message = {
         role: "assistant",
         content:
-          data.candidates?.[0]?.content?.parts?.[0]?.text ||
-          "Không có phản hồi",
+           data.answer || "Không có phản hồi",
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -40,7 +39,7 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
-      <div className="bg-black text-white p-4">
+      <div className="bg-black text-white p-4 flex justify-between items-center">
        <h1 className="text-xl font-bold">
           LinhGPT
         </h1>
