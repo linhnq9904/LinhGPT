@@ -1,46 +1,76 @@
 import { useState } from "react";
 import ChatWindow from "./components/ChatWindow";
 import ChatInput from "./components/ChatInput";
-import { sendMessage } from "./services/chatApi";
 import type { Message } from "./types/message";
+import { streamMessage } from "./services/chatStream";
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
- const handleNewChat = () => {
-      setMessages([]);
-    };
+
+  const handleNewChat = () => {
+    setMessages([]);
+  };
   const handleSend = async (text: string) => {
+
     const userMessage: Message = {
       role: "user",
       content: text,
     };
-   
-    setMessages(prev => [...prev, userMessage]);
 
-    setLoading(true);
+    const assistantMessage: Message = {
+      role: "assistant",
+      content: "",
+    };
+
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      assistantMessage,
+    ]);
 
     try {
-      const data = await sendMessage(text);
 
-      const aiMessage: Message = {
-        role: "assistant",
-        content:
-           data.answer || "Không có phản hồi",
-      };
+      await streamMessage(text, (chunk) => {
+        
+        if (chunk.includes("[DONE]")) {
+          return;
+        }
 
-      setMessages(prev => [...prev, aiMessage]);
+        setMessages(prev => {
+
+          const updated = [...prev];
+
+          const lastIndex =
+            updated.length - 1;
+
+          updated[lastIndex] = {
+            ...updated[lastIndex],
+            content:
+              updated[lastIndex].content +
+              chunk,
+          };
+
+          return updated;
+        });
+
+      });
+
     } catch (error) {
-      console.error(error);
-    }
 
-    setLoading(false);
+      console.error(error);
+
+    } finally {
+
+      setLoading(false);
+
+    }
   };
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       <div className="bg-black text-white p-4 flex justify-between items-center">
-       <h1 className="text-xl font-bold">
+        <h1 className="text-xl font-bold">
           LinhGPT
         </h1>
         <button
@@ -50,7 +80,7 @@ function App() {
           New Chat
         </button>
       </div>
-     
+
       <ChatWindow messages={messages} />
 
       {loading && (

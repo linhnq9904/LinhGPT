@@ -12,7 +12,7 @@ class GeminiService
     public function chat($message)
     {
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={$this->apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key={$this->apiKey}";
 
         $data = [
             "contents" => [
