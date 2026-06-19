@@ -1,3 +1,4 @@
 <?php
 
-define("GROQ_API_KEY", "your_groq_api_key_here");
+define("GROQ_API_KEY", "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+define("JWT_SECRET", "LinhGPT_2026_@#a8Hsd92ksA!xPq7LmN");
