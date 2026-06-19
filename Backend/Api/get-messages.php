@@ -1,22 +1,34 @@
 <?php
 
-header("Access-Control-Allow-Origin: http://localhost:5173");
-header("Access-Control-Allow-Headers: Content-Type");
-header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Content-Type: application/json");
+header(
+    "Access-Control-Allow-Headers:
+   Content-Type,
+   Authorization,
+   X-Auth-Token"
+);
 
 require_once "../config/database.php";
+require_once "../middleware/AuthMiddleware.php";
+
+$user = getAuthUser();
+$userId = $user->user_id;
 
 $conversationId = $_GET["conversation_id"] ?? 0;
 
 $stmt = $conn->prepare(
-    "SELECT role, content
-     FROM messages
-     WHERE conversation_id = ?
-     ORDER BY id ASC"
+    "SELECT m.role, m.content
+     FROM messages m
+     INNER JOIN conversations c
+        ON m.conversation_id = c.id
+     WHERE m.conversation_id = ?
+       AND c.user_id = ?
+     ORDER BY m.id ASC"
 );
 
-$stmt->execute([$conversationId]);
+$stmt->execute([
+    $conversationId,
+    $userId
+]);
 
 echo json_encode(
     $stmt->fetchAll(PDO::FETCH_ASSOC)

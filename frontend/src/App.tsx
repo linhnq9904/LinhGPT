@@ -10,26 +10,77 @@ function App() {
   const [conversations, setConversations] = useState<any[]>([]);
   const [conversationId, setConversationId] = useState<number | null>(1);
 
-  const handleNewChat = () => {
-    setMessages([]);
-  };
-
-  useEffect(() => {
-    fetch("http://localhost/Backend/Api/get-conversations.php")
-      .then(res => res.json())
-      .then(data => setConversations(data));
-  }, []);
-
-  const loadConversation = async (id: number) => {
-    setConversationId(id);
+  const handleNewChat = async () => {
+    const token = localStorage.getItem("token");
 
     const res = await fetch(
-      `http://localhost/Backend/Api/get-messages.php?conversation_id=${id}`
+      "http://localhost/Backend/Api/create-conversation.php",
+      {
+        method: "POST",
+        headers: {
+          "X-Auth-Token": `Bearer ${token}`,
+        },
+      }
     );
 
     const data = await res.json();
 
-    setMessages(data);
+    setConversationId(Number(data.conversation_id));
+    setMessages([]);
+
+    const convRes = await fetch(
+      "http://localhost/Backend/Api/get-conversations.php",
+      {
+        headers: {
+          "X-Auth-Token": `Bearer ${token}`,
+        },
+      }
+    );
+
+    const convData = await convRes.json();
+    setConversations(convData);
+  };
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+
+    fetch("http://localhost/Backend/Api/get-conversations.php", {
+      headers: {
+        "X-Auth-Token": `Bearer ${token}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setConversations(data);
+        } else {
+          console.log("Get conversations error:", data);
+          setConversations([]);
+        }
+      });
+  }, []);
+
+  const loadConversation = async (id: number) => {
+    const token = localStorage.getItem("token");
+
+    setConversationId(id);
+
+    const res = await fetch(
+      `http://localhost/Backend/Api/get-messages.php?conversation_id=${id}`,
+      {
+        headers: {
+          "X-Auth-Token": `Bearer ${token}`,
+        },
+      }
+    );
+
+    const data = await res.json();
+
+    if (Array.isArray(data)) {
+      setMessages(data);
+    } else {
+      console.log("Get messages error:", data);
+      setMessages([]);
+    }
   };
 
   const handleSend = async (text: string) => {
