@@ -1,0 +1,6 @@
+{
+    "name": "linhgpt/backend",
+    "require": {
+        "firebase/php-jwt": "^7.1"
+    }
+}
