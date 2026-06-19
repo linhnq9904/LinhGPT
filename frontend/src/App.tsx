@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChatWindow from "./components/ChatWindow";
 import ChatInput from "./components/ChatInput";
 import type { Message } from "./types/message";
@@ -7,10 +7,31 @@ import { streamMessage } from "./services/chatStream";
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [conversationId, setConversationId] = useState<number | null>(1);
 
   const handleNewChat = () => {
     setMessages([]);
   };
+
+  useEffect(() => {
+    fetch("http://localhost/Backend/Api/get-conversations.php")
+      .then(res => res.json())
+      .then(data => setConversations(data));
+  }, []);
+
+  const loadConversation = async (id: number) => {
+    setConversationId(id);
+
+    const res = await fetch(
+      `http://localhost/Backend/Api/get-messages.php?conversation_id=${id}`
+    );
+
+    const data = await res.json();
+
+    setMessages(data);
+  };
+
   const handleSend = async (text: string) => {
 
     const userMessage: Message = {
@@ -31,7 +52,7 @@ function App() {
     setLoading(true);
     try {
 
-      await streamMessage(text, (chunk) => {
+      await streamMessage(text, conversationId, (chunk) => {
 
         if (chunk.includes("[DONE]")) {
           return;
@@ -104,21 +125,16 @@ function App() {
         </div>
 
         <div className="px-2 mt-2 flex-1 overflow-y-auto space-y-1">
-          {[
-            "Kế hoạch tạo ChatGPT Clone",
-            "React là gì?",
-            "PHP API Groq",
-            "Streaming API",
-            "Lưu chat vào MySQL",
-          ].map((item, index) => (
+          {conversations.map((item) => (
             <div
-              key={index}
-              className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${index === 0
-                  ? "bg-gray-200"
-                  : "hover:bg-gray-200"
+              key={item.id}
+              onClick={() => loadConversation(item.id)}
+              className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${conversationId === Number(item.id)
+                ? "bg-gray-200"
+                : "hover:bg-gray-200"
                 }`}
             >
-              {item}
+              {item.title || "Cuộc trò chuyện mới"}
             </div>
           ))}
         </div>

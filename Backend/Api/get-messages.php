@@ -1,9 +1,13 @@
 <?php
 
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Content-Type: application/json");
+
 require_once "../config/database.php";
 
-$id =
-    $_GET["conversation_id"];
+$conversationId = $_GET["conversation_id"] ?? 0;
 
 $stmt = $conn->prepare(
     "SELECT role, content
@@ -12,10 +16,8 @@ $stmt = $conn->prepare(
      ORDER BY id ASC"
 );
 
-$stmt->execute([$id]);
+$stmt->execute([$conversationId]);
 
 echo json_encode(
-    $stmt->fetchAll(
-        PDO::FETCH_ASSOC
-    )
+    $stmt->fetchAll(PDO::FETCH_ASSOC)
 );

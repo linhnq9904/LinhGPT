@@ -13,6 +13,7 @@ const typeText = async (
 
 export const streamMessage = async (
     message: string,
+    conversationId: number | null,
     onChunk: (chunk: string) => void
 ) => {
     const response = await fetch(
@@ -22,7 +23,10 @@ export const streamMessage = async (
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({
+                message,
+                conversation_id: conversationId,
+            }),
         }
     );
 
