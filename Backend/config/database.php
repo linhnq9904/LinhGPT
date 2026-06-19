@@ -1,7 +1,7 @@
 <?php
 
 $host = "localhost";
-$dbname = "LinhGPT";
+$dbname = "linhgpt";
 $username = "root";
 $password = "";
 

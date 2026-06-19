@@ -6,13 +6,13 @@ class GeminiService
 
     public function __construct()
     {
-        $this->apiKey = GEMINI_API_KEY;
+        $this->apiKey = GROQ_API_KEY;
     }
 
     public function chat($message)
     {
 
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key={$this->apiKey}";
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key={$this->apiKey}";
 
         $data = [
             "contents" => [

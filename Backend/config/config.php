@@ -1,3 +1,3 @@
 <?php
 
-define("GEMINI_API_KEY", "YOUR_API_KEY_HERE");
+define("GROQ_API_KEY", "your_groq_api_key_here");

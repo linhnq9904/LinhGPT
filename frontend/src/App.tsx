@@ -28,11 +28,11 @@ function App() {
       userMessage,
       assistantMessage,
     ]);
-
+    setLoading(true);
     try {
 
       await streamMessage(text, (chunk) => {
-        
+
         if (chunk.includes("[DONE]")) {
           return;
         }

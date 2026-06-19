@@ -1,131 +1,75 @@
+const sleep = (ms: number) =>
+    new Promise(resolve => setTimeout(resolve, ms));
+
+const typeText = async (
+    text: string,
+    onChunk: (chunk: string) => void
+) => {
+    for (const char of text) {
+        onChunk(char);
+        await sleep(15);
+    }
+};
+
 export const streamMessage = async (
     message: string,
     onChunk: (chunk: string) => void
 ) => {
-    try {
-        const response = await fetch(
-            "http://localhost/Backend/Api/chat-stream.php",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    message,
-                }),
-            }
-        );
-
-        if (!response.ok) {
-            throw new Error(
-                `HTTP Error: ${response.status}`
-            );
+    const response = await fetch(
+        "http://localhost/Backend/Api/chat-stream.php",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ message }),
         }
+    );
 
-        if (!response.body) {
-            throw new Error(
-                "Response body is null"
-            );
-        }
+    if (!response.body) {
+        throw new Error("Response body is null");
+    }
 
-        const reader =
-            response.body.getReader();
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
 
-        const decoder =
-            new TextDecoder();
+    let buffer = "";
 
-        let buffer = "";
+    while (true) {
+        const { done, value } = await reader.read();
 
-        while (true) {
+        if (done) break;
 
-            const {
-                done,
-                value
-            } = await reader.read();
+        buffer += decoder.decode(value, {
+            stream: true,
+        });
 
-            if (done) break;
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
 
-            buffer += decoder.decode(
-                value,
-                {
-                    stream: true,
+        for (const event of events) {
+            const line = event
+                .split("\n")
+                .find(line => line.startsWith("data:"));
+
+            if (!line) continue;
+
+            const jsonText = line.replace("data:", "").trim();
+
+            if (jsonText === "[DONE]") continue;
+
+            try {
+                const parsed = JSON.parse(jsonText);
+
+                const text =
+                    parsed?.choices?.[0]?.delta?.content || "";
+
+                if (text) {
+                    await typeText(text, onChunk);
                 }
-            );
-
-            const lines =
-                buffer.split("\n");
-
-            buffer =
-                lines.pop() || "";
-
-            for (const line of lines) {
-
-                if (
-                    !line.startsWith(
-                        "data:"
-                    )
-                ) {
-                    continue;
-                }
-
-                const jsonText =
-                    line
-                        .replace(
-                            "data:",
-                            ""
-                        )
-                        .trim();
-
-                if (
-                    !jsonText ||
-                    jsonText === "[DONE]"
-                ) {
-                    continue;
-                }
-
-                try {
-
-                    const parsed =
-                        JSON.parse(
-                            jsonText
-                        );
-
-                    const text =
-                        parsed
-                            ?.candidates?.[0]
-                            ?.content?.parts?.[0]
-                            ?.text || "";
-
-                    if (text) {
-                        console.log("TEXT:", text);
-                        await new Promise(resolve =>
-                            setTimeout(resolve, 500)
-                        );
-
-                        onChunk(text);
-                    }
-
-                } catch (error) {
-
-                    console.log(
-                        "Parse error:",
-                        error
-                    );
-
-                    console.log(
-                        jsonText
-                    );
-                }
+            } catch (error) {
+                console.log("Parse error:", error);
             }
         }
-
-    } catch (error) {
-
-        console.error(
-            "Stream error:",
-            error
-        );
-
-        throw error;
     }
 };

@@ -1,10 +1,12 @@
 <?php
 
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Origin: http://localhost:5173");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
+header("Access-Control-Max-Age: 86400");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+if ($_SERVER["REQUEST_METHOD"] === "OPTIONS") {
     http_response_code(200);
     exit();
 }
@@ -30,34 +32,35 @@ $input = json_decode(
 
 $message = $input["message"] ?? "";
 
-$url =
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key="
-    . GEMINI_API_KEY;
+$url = "https://api.groq.com/openai/v1/chat/completions";
 
 $data = [
-    "contents" => [
+    "model" => "llama-3.3-70b-versatile",
+    "messages" => [
         [
-            "parts" => [
-                [
-                    "text" => $message
-                ]
-            ]
+            "role" => "system",
+            "content" => "Bạn là LinhGPT, một trợ lý AI hữu ích. Trả lời bằng tiếng Việt."
+        ],
+        [
+            "role" => "user",
+            "content" => $message
         ]
-    ]
+    ],
+    "stream" => true
 ];
-
 $ch = curl_init($url);
 
 curl_setopt_array($ch, [
     CURLOPT_POST => true,
     CURLOPT_HTTPHEADER => [
-        "Content-Type: application/json"
+        "Content-Type: application/json",
+        "Authorization: Bearer " . GROQ_API_KEY
     ],
     CURLOPT_POSTFIELDS => json_encode($data),
 
     CURLOPT_WRITEFUNCTION =>
     function ($ch, $chunk) {
-
+       
         echo $chunk;
 
         @ob_flush();
