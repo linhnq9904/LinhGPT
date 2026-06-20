@@ -3,64 +3,93 @@ import ChatWindow from "./components/ChatWindow";
 import ChatInput from "./components/ChatInput";
 import type { Message } from "./types/message";
 import { streamMessage } from "./services/chatStream";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [conversations, setConversations] = useState<any[]>([]);
-  const [conversationId, setConversationId] = useState<number | null>(1);
+  const [conversationId, setConversationId] = useState<number | null>(null);
 
-  const handleNewChat = async () => {
-    const token = localStorage.getItem("token");
+  const [authPage, setAuthPage] =
+    useState<"guest" | "login" | "register">("guest");
+
+  const [token, setToken] = useState<string | null>(
+    localStorage.getItem("token")
+  );
+
+  const [user, setUser] = useState<any>(
+    JSON.parse(localStorage.getItem("user") || "null")
+  );
+
+  const loadConversations = async () => {
+    const currentToken = localStorage.getItem("token");
+
+    if (!currentToken) {
+      setConversations([]);
+      return;
+    }
 
     const res = await fetch(
-      "http://localhost/Backend/Api/create-conversation.php",
+      "http://localhost/Backend/Api/get-conversations.php",
       {
-        method: "POST",
         headers: {
-          "X-Auth-Token": `Bearer ${token}`,
+          "X-Auth-Token": `Bearer ${currentToken}`,
         },
       }
     );
 
     const data = await res.json();
 
-    setConversationId(Number(data.conversation_id));
-    setMessages([]);
+    if (Array.isArray(data)) {
+      setConversations(data);
+    } else {
+      setConversations([]);
+    }
+  };
 
-    const convRes = await fetch(
-      "http://localhost/Backend/Api/get-conversations.php",
+  useEffect(() => {
+    if (token) {
+      loadConversations();
+    }
+  }, [token]);
+
+  const handleNewChat = async () => {
+    if (!token) {
+      setMessages([]);
+      setConversationId(null);
+      return;
+    }
+
+    const currentToken = localStorage.getItem("token");
+
+    const res = await fetch(
+      "http://localhost/Backend/Api/create-conversation.php",
       {
+        method: "POST",
         headers: {
-          "X-Auth-Token": `Bearer ${token}`,
+          "X-Auth-Token": `Bearer ${currentToken}`,
         },
       }
     );
 
-    const convData = await convRes.json();
-    setConversations(convData);
-  };
-  useEffect(() => {
-    const token = localStorage.getItem("token");
+    const data = await res.json();
 
-    fetch("http://localhost/Backend/Api/get-conversations.php", {
-      headers: {
-        "X-Auth-Token": `Bearer ${token}`,
-      },
-    })
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setConversations(data);
-        } else {
-          console.log("Get conversations error:", data);
-          setConversations([]);
-        }
-      });
-  }, []);
+    if (!data.success) {
+      alert(data.message || "Không tạo được cuộc trò chuyện");
+      return;
+    }
+
+    setConversationId(Number(data.conversation_id));
+    setMessages([]);
+    await loadConversations();
+  };
 
   const loadConversation = async (id: number) => {
-    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const currentToken = localStorage.getItem("token");
 
     setConversationId(id);
 
@@ -68,7 +97,7 @@ function App() {
       `http://localhost/Backend/Api/get-messages.php?conversation_id=${id}`,
       {
         headers: {
-          "X-Auth-Token": `Bearer ${token}`,
+          "X-Auth-Token": `Bearer ${currentToken}`,
         },
       }
     );
@@ -78,13 +107,11 @@ function App() {
     if (Array.isArray(data)) {
       setMessages(data);
     } else {
-      console.log("Get messages error:", data);
       setMessages([]);
     }
   };
 
   const handleSend = async (text: string) => {
-
     const userMessage: Message = {
       role: "user",
       content: text,
@@ -95,53 +122,78 @@ function App() {
       content: "",
     };
 
-    setMessages(prev => [
+    setMessages((prev) => [
       ...prev,
       userMessage,
       assistantMessage,
     ]);
+
     setLoading(true);
+
     try {
+      await streamMessage(text, token ? conversationId : null, (chunk) => {
+        if (chunk.includes("[DONE]")) return;
 
-      await streamMessage(text, conversationId, (chunk) => {
-
-        if (chunk.includes("[DONE]")) {
-          return;
-        }
-
-        setMessages(prev => {
-
+        setMessages((prev) => {
           const updated = [...prev];
-
-          const lastIndex =
-            updated.length - 1;
+          const lastIndex = updated.length - 1;
 
           updated[lastIndex] = {
             ...updated[lastIndex],
-            content:
-              updated[lastIndex].content +
-              chunk,
+            content: updated[lastIndex].content + chunk,
           };
 
           return updated;
         });
-
       });
 
+      if (token) {
+        await loadConversations();
+      }
     } catch (error) {
-
       console.error(error);
-
     } finally {
-
       setLoading(false);
-
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    setToken(null);
+    setUser(null);
+    setMessages([]);
+    setConversations([]);
+    setConversationId(null);
+    setAuthPage("guest");
+  };
+
+  if (!token && authPage === "login") {
+    return (
+      <LoginPage
+        onLogin={(newToken, newUser) => {
+          localStorage.setItem("token", newToken);
+          localStorage.setItem("user", JSON.stringify(newUser));
+          setToken(newToken);
+          setUser(newUser);
+          setAuthPage("guest");
+        }}
+        onGoRegister={() => setAuthPage("register")}
+      />
+    );
+  }
+
+  if (!token && authPage === "register") {
+    return (
+      <RegisterPage
+        onGoLogin={() => setAuthPage("login")}
+      />
+    );
+  }
+
   return (
     <div className="h-screen flex bg-white text-gray-900">
-      {/* Sidebar */}
       <aside className="w-[280px] bg-[#f9f9f9] border-r border-gray-200 flex flex-col">
         <div className="px-4 py-4 flex items-center justify-between">
           <h1 className="text-xl font-semibold">LinhGPT</h1>
@@ -171,39 +223,67 @@ function App() {
           </button>
         </div>
 
-        <div className="px-4 mt-6 text-sm font-semibold text-gray-600">
-          Gần đây
-        </div>
-
-        <div className="px-2 mt-2 flex-1 overflow-y-auto space-y-1">
-          {conversations.map((item) => (
-            <div
-              key={item.id}
-              onClick={() => loadConversation(item.id)}
-              className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${conversationId === Number(item.id)
-                ? "bg-gray-200"
-                : "hover:bg-gray-200"
-                }`}
-            >
-              {item.title || "Cuộc trò chuyện mới"}
+        {token && (
+          <>
+            <div className="px-4 mt-6 text-sm font-semibold text-gray-600">
+              Gần đây
             </div>
-          ))}
-        </div>
+
+            <div className="px-2 mt-2 flex-1 overflow-y-auto space-y-1">
+              {conversations.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => loadConversation(Number(item.id))}
+                  className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${
+                    conversationId === Number(item.id)
+                      ? "bg-gray-200"
+                      : "hover:bg-gray-200"
+                  }`}
+                >
+                  {item.title || "Cuộc trò chuyện mới"}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {!token && (
+          <div className="flex-1 px-4 mt-6 text-sm text-gray-500">
+            Đăng nhập để lưu lịch sử trò chuyện.
+          </div>
+        )}
 
         <div className="border-t border-gray-200 p-3">
-          <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-200 cursor-pointer">
-            <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
-              LQ
+          {token ? (
+            <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-gray-200">
+              <div className="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center text-sm">
+                {user?.fullname?.charAt(0)?.toUpperCase() || "U"}
+              </div>
+
+              <div className="flex-1">
+                <div className="text-sm font-medium">
+                  {user?.fullname || "User"}
+                </div>
+
+                <button
+                  onClick={handleLogout}
+                  className="text-xs text-red-500"
+                >
+                  Đăng xuất
+                </button>
+              </div>
             </div>
-            <div>
-              <div className="text-sm font-medium">Linh Quang</div>
-              <div className="text-xs text-gray-500">Free</div>
-            </div>
-          </div>
+          ) : (
+            <button
+              onClick={() => setAuthPage("login")}
+              className="w-full px-3 py-2 rounded-xl bg-black text-white text-sm"
+            >
+              Đăng nhập
+            </button>
+          )}
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex-1 flex flex-col relative">
         <header className="h-14 flex items-center justify-between px-5 border-b border-gray-100">
           <div className="text-lg font-semibold">LinhGPT</div>
