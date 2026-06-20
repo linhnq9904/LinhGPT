@@ -32,39 +32,49 @@ function LoginPage({ onLogin, onGoRegister }: Props) {
   };
 
   return (
-    <div className="h-screen flex items-center justify-center bg-white">
-      <div className="w-[400px] border rounded-2xl p-6 shadow-sm">
-        <h1 className="text-3xl font-bold text-center mb-6">Đăng nhập</h1>
+    <div>
+      <h1 className="text-3xl font-bold text-center mb-6">
+        Đăng nhập
+      </h1>
 
-        <input
-          className="w-full border rounded-lg px-4 py-3 mb-3"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+      <input
+        className="w-full border rounded-lg px-4 py-3 mb-3"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleLogin();
+          }
+        }}
+      />
 
-        <input
-          className="w-full border rounded-lg px-4 py-3 mb-4"
-          placeholder="Mật khẩu"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+      <input
+        className="w-full border rounded-lg px-4 py-3 mb-4"
+        placeholder="Mật khẩu"
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleLogin();
+          }
+        }}
+      />
 
-        <button
-          onClick={handleLogin}
-          className="w-full bg-black text-white rounded-lg py-3"
-        >
-          Đăng nhập
+      <button
+        onClick={handleLogin}
+        className="w-full bg-black text-white rounded-lg py-3"
+      >
+        Đăng nhập
+      </button>
+
+      <p className="text-center mt-4 text-sm">
+        Chưa có tài khoản?{" "}
+        <button onClick={onGoRegister} className="underline">
+          Đăng ký
         </button>
-
-        <p className="text-center mt-4 text-sm">
-          Chưa có tài khoản?{" "}
-          <button onClick={onGoRegister} className="underline">
-            Đăng ký
-          </button>
-        </p>
-      </div>
+      </p>
     </div>
   );
 }

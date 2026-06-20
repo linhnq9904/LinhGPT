@@ -111,81 +111,81 @@ function App() {
     }
   };
 
-const handleSend = async (text: string) => {
-  let currentConversationId = conversationId;
-  const currentToken = localStorage.getItem("token");
+  const handleSend = async (text: string) => {
+    let currentConversationId = conversationId;
+    const currentToken = localStorage.getItem("token");
 
-  if (currentToken && !currentConversationId) {
-    const res = await fetch(
-      "http://localhost/Backend/Api/create-conversation.php",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Auth-Token": `Bearer ${currentToken}`,
-        },
+    if (currentToken && !currentConversationId) {
+      const res = await fetch(
+        "http://localhost/Backend/Api/create-conversation.php",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Auth-Token": `Bearer ${currentToken}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!data.success) {
+        alert(data.message || "Không tạo được cuộc trò chuyện");
+        return;
       }
-    );
 
-    const data = await res.json();
-
-    if (!data.success) {
-      alert(data.message || "Không tạo được cuộc trò chuyện");
-      return;
+      currentConversationId = Number(data.conversation_id);
+      setConversationId(currentConversationId);
     }
 
-    currentConversationId = Number(data.conversation_id);
-    setConversationId(currentConversationId);
-  }
+    const userMessage: Message = {
+      role: "user",
+      content: text,
+    };
 
-  const userMessage: Message = {
-    role: "user",
-    content: text,
-  };
+    const assistantMessage: Message = {
+      role: "assistant",
+      content: "",
+    };
 
-  const assistantMessage: Message = {
-    role: "assistant",
-    content: "",
-  };
+    setMessages(prev => [
+      ...prev,
+      userMessage,
+      assistantMessage,
+    ]);
 
-  setMessages(prev => [
-    ...prev,
-    userMessage,
-    assistantMessage,
-  ]);
+    setLoading(true);
 
-  setLoading(true);
+    try {
+      await streamMessage(
+        text,
+        currentToken ? currentConversationId : null,
+        (chunk) => {
+          if (chunk.includes("[DONE]")) return;
 
-  try {
-    await streamMessage(
-      text,
-      currentToken ? currentConversationId : null,
-      (chunk) => {
-        if (chunk.includes("[DONE]")) return;
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastIndex = updated.length - 1;
 
-        setMessages(prev => {
-          const updated = [...prev];
-          const lastIndex = updated.length - 1;
+            updated[lastIndex] = {
+              ...updated[lastIndex],
+              content: updated[lastIndex].content + chunk,
+            };
 
-          updated[lastIndex] = {
-            ...updated[lastIndex],
-            content: updated[lastIndex].content + chunk,
-          };
+            return updated;
+          });
+        }
+      );
 
-          return updated;
-        });
+      if (currentToken) {
+        await loadConversations();
       }
-    );
-
-    if (currentToken) {
-      await loadConversations();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -197,29 +197,6 @@ const handleSend = async (text: string) => {
     setConversationId(null);
     setAuthPage("guest");
   };
-
-  if (!token && authPage === "login") {
-    return (
-      <LoginPage
-        onLogin={(newToken, newUser) => {
-          localStorage.setItem("token", newToken);
-          localStorage.setItem("user", JSON.stringify(newUser));
-          setToken(newToken);
-          setUser(newUser);
-          setAuthPage("guest");
-        }}
-        onGoRegister={() => setAuthPage("register")}
-      />
-    );
-  }
-
-  if (!token && authPage === "register") {
-    return (
-      <RegisterPage
-        onGoLogin={() => setAuthPage("login")}
-      />
-    );
-  }
 
   return (
     <div className="h-screen flex bg-white text-gray-900">
@@ -263,11 +240,10 @@ const handleSend = async (text: string) => {
                 <div
                   key={item.id}
                   onClick={() => loadConversation(Number(item.id))}
-                  className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${
-                    conversationId === Number(item.id)
+                  className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${conversationId === Number(item.id)
                       ? "bg-gray-200"
                       : "hover:bg-gray-200"
-                  }`}
+                    }`}
                 >
                   {item.title || "Cuộc trò chuyện mới"}
                 </div>
@@ -349,6 +325,46 @@ const handleSend = async (text: string) => {
             LinhGPT có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.
           </p>
         </div>
+        {!token && authPage === "login" && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-xl w-[420px] p-6 relative">
+              <button
+                onClick={() => setAuthPage("guest")}
+                className="absolute right-4 top-3 text-gray-500 hover:text-black"
+              >
+                ✕
+              </button>
+
+              <LoginPage
+                onLogin={(newToken, newUser) => {
+                  localStorage.setItem("token", newToken);
+                  localStorage.setItem("user", JSON.stringify(newUser));
+                  setToken(newToken);
+                  setUser(newUser);
+                  setAuthPage("guest");
+                }}
+                onGoRegister={() => setAuthPage("register")}
+              />
+            </div>
+          </div>
+        )}
+
+        {!token && authPage === "register" && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-xl w-[420px] p-6 relative">
+              <button
+                onClick={() => setAuthPage("guest")}
+                className="absolute right-4 top-3 text-gray-500 hover:text-black"
+              >
+                ✕
+              </button>
+
+              <RegisterPage
+                onGoLogin={() => setAuthPage("login")}
+              />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
