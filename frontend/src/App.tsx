@@ -197,7 +197,35 @@ function App() {
     setConversationId(null);
     setAuthPage("guest");
   };
+  const handleDeleteConversation = async (id: number) => {
+    const confirmed = window.confirm(
+      "Bạn có chắc muốn xóa cuộc trò chuyện này?"
+    );
 
+    if (!confirmed) {
+      return;
+    }
+    
+    const token = localStorage.getItem("token");
+
+    await fetch("http://localhost/Backend/Api/delete-conversation.php", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Auth-Token": `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        conversation_id: id,
+      }),
+    });
+
+    if (conversationId === id) {
+      setConversationId(null);
+      setMessages([]);
+    }
+
+    await loadConversations();
+  };
   return (
     <div className="h-screen flex bg-white text-gray-900">
       <aside className="w-[280px] bg-[#f9f9f9] border-r border-gray-200 flex flex-col">
@@ -239,13 +267,27 @@ function App() {
               {conversations.map((item) => (
                 <div
                   key={item.id}
-                  onClick={() => loadConversation(Number(item.id))}
-                  className={`px-3 py-2 rounded-xl cursor-pointer text-sm truncate ${conversationId === Number(item.id)
-                      ? "bg-gray-200"
-                      : "hover:bg-gray-200"
+                  className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-sm ${conversationId === Number(item.id)
+                    ? "bg-gray-200"
+                    : "hover:bg-gray-200"
                     }`}
                 >
-                  {item.title || "Cuộc trò chuyện mới"}
+                  <div
+                    onClick={() => loadConversation(Number(item.id))}
+                    className="truncate flex-1"
+                  >
+                    {item.title || "Cuộc trò chuyện mới"}
+                  </div>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConversation(Number(item.id));
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-500 ml-2"
+                  >
+                    ✕
+                  </button>
                 </div>
               ))}
             </div>
