@@ -111,30 +111,59 @@ function App() {
     }
   };
 
-  const handleSend = async (text: string) => {
-    const userMessage: Message = {
-      role: "user",
-      content: text,
-    };
+const handleSend = async (text: string) => {
+  let currentConversationId = conversationId;
+  const currentToken = localStorage.getItem("token");
 
-    const assistantMessage: Message = {
-      role: "assistant",
-      content: "",
-    };
+  if (currentToken && !currentConversationId) {
+    const res = await fetch(
+      "http://localhost/Backend/Api/create-conversation.php",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Auth-Token": `Bearer ${currentToken}`,
+        },
+      }
+    );
 
-    setMessages((prev) => [
-      ...prev,
-      userMessage,
-      assistantMessage,
-    ]);
+    const data = await res.json();
 
-    setLoading(true);
+    if (!data.success) {
+      alert(data.message || "Không tạo được cuộc trò chuyện");
+      return;
+    }
 
-    try {
-      await streamMessage(text, token ? conversationId : null, (chunk) => {
+    currentConversationId = Number(data.conversation_id);
+    setConversationId(currentConversationId);
+  }
+
+  const userMessage: Message = {
+    role: "user",
+    content: text,
+  };
+
+  const assistantMessage: Message = {
+    role: "assistant",
+    content: "",
+  };
+
+  setMessages(prev => [
+    ...prev,
+    userMessage,
+    assistantMessage,
+  ]);
+
+  setLoading(true);
+
+  try {
+    await streamMessage(
+      text,
+      currentToken ? currentConversationId : null,
+      (chunk) => {
         if (chunk.includes("[DONE]")) return;
 
-        setMessages((prev) => {
+        setMessages(prev => {
           const updated = [...prev];
           const lastIndex = updated.length - 1;
 
@@ -145,18 +174,18 @@ function App() {
 
           return updated;
         });
-      });
-
-      if (token) {
-        await loadConversations();
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
 
+    if (currentToken) {
+      await loadConversations();
+    }
+  } catch (error) {
+    console.error(error);
+  } finally {
+    setLoading(false);
+  }
+};
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");

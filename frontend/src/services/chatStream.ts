@@ -16,13 +16,24 @@ export const streamMessage = async (
     conversationId: number | null,
     onChunk: (chunk: string) => void
 ) => {
+    const token =
+        localStorage.getItem("token");
+
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+    };
+
+    if (token) {
+        headers["X-Auth-Token"] =
+            `Bearer ${token}`;
+    }
+
     const response = await fetch(
         "http://localhost/Backend/Api/chat-stream.php",
         {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            credentials: "include",
+            headers,
             body: JSON.stringify({
                 message,
                 conversation_id: conversationId,
@@ -40,7 +51,8 @@ export const streamMessage = async (
     let buffer = "";
 
     while (true) {
-        const { done, value } = await reader.read();
+        const { done, value } =
+            await reader.read();
 
         if (done) break;
 
@@ -48,31 +60,48 @@ export const streamMessage = async (
             stream: true,
         });
 
-        const events = buffer.split("\n\n");
-        buffer = events.pop() || "";
+        const events =
+            buffer.split("\n\n");
+
+        buffer =
+            events.pop() || "";
 
         for (const event of events) {
             const line = event
                 .split("\n")
-                .find(line => line.startsWith("data:"));
+                .find(line =>
+                    line.startsWith("data:")
+                );
 
             if (!line) continue;
 
-            const jsonText = line.replace("data:", "").trim();
+            const jsonText = line
+                .replace("data:", "")
+                .trim();
 
-            if (jsonText === "[DONE]") continue;
+            if (jsonText === "[DONE]") {
+                continue;
+            }
 
             try {
-                const parsed = JSON.parse(jsonText);
+                const parsed =
+                    JSON.parse(jsonText);
 
                 const text =
-                    parsed?.choices?.[0]?.delta?.content || "";
+                    parsed?.choices?.[0]
+                        ?.delta?.content || "";
 
                 if (text) {
-                    await typeText(text, onChunk);
+                    await typeText(
+                        text,
+                        onChunk
+                    );
                 }
             } catch (error) {
-                console.log("Parse error:", error);
+                console.log(
+                    "Parse error:",
+                    error
+                );
             }
         }
     }

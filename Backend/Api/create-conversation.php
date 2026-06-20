@@ -17,15 +17,14 @@ $user = getAuthUser();
 $userId = $user->user_id;
 
 $stmt = $conn->prepare(
-    "INSERT INTO conversations(title, user_id)
-     VALUES (?, ?)"
+    "INSERT INTO conversations(title, user_id, created_at, updated_at)
+     VALUES (?, ?, NOW(), NOW())"
 );
 
 $stmt->execute([
     "Cuộc trò chuyện mới",
     $userId
 ]);
-
 echo json_encode([
     "success" => true,
     "conversation_id" => $conn->lastInsertId()

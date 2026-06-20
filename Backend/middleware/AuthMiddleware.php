@@ -57,4 +57,26 @@ function getAuthUser()
         exit();
     }
 }
+function getAuthUserOptional()
+{
+    $authHeader =
+        $_SERVER["HTTP_X_AUTH_TOKEN"] ??
+        $_SERVER["HTTP_AUTHORIZATION"] ??
+        $_SERVER["REDIRECT_HTTP_AUTHORIZATION"] ??
+        "";
 
+    if (!$authHeader) {
+        return null;
+    }
+
+    $token = trim(str_replace("Bearer", "", $authHeader));
+
+    try {
+        return JWT::decode(
+            $token,
+            new Key(JWT_SECRET, "HS256")
+        );
+    } catch (Exception $e) {
+        return null;
+    }
+}
